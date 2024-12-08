@@ -1,3 +1,4 @@
+#imports
 import speech_recognition as sr
 import pyttsx3
 import webbrowser
@@ -5,10 +6,12 @@ import urllib.parse
 import datetime
 import requests
 import json
+import os
 
+#name of the assistant
 assistant_name = "sunday"
 
-
+#countries for news
 COUNTRY_CODES = {
     'united states': 'us',
     'uk': 'gb',
@@ -28,19 +31,47 @@ COUNTRY_CODES = {
     'ghana': 'gh'
 }
 
-
+#initializing and assigning variables
 listener = sr.Recognizer()
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[1].id)
-
+#greeting from the assistant
 greeting = f'Hello, I am {assistant_name}, your virtual assistant. How can I help you today?'
+#news api key
 NEWS_API_KEY = "2a0be3767ca24e52b8a51b04bc3cf338"
 
+
+#function for the assistant to speak
 def speak(text):
     engine.say(text)
     engine.runAndWait()
 
+#function for the assistant to take notes
+def save_note(note_content):
+    try:
+        # Create notes directory if it doesn't exist
+        notes_dir = "notes"
+        if not os.path.exists(notes_dir):
+            os.makedirs(notes_dir)
+        
+        # Generate timestamp for unique filename
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"note_{timestamp}.txt"
+        filepath = os.path.join(notes_dir, filename)
+        
+        # Save the note with timestamp
+        with open(filepath, "w") as f:
+            f.write(f"Note created on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(note_content)
+        
+        return f"Note saved successfully as {filename}"
+    except Exception as e:
+        print(f"Error saving note: {e}")
+        return "Sorry, I couldn't save your note."
+
+
+#function for the assistant to get news
 def get_news(category=None, query=None, country='us'):
     try:
         base_url = "https://newsapi.org/v2/top-headlines"
@@ -75,6 +106,7 @@ def get_news(category=None, query=None, country='us'):
         print(f"Error fetching news: {e}")
         return "Sorry, I couldn't fetch the news right now."
 
+#function for the assistant to get wikipedia information
 def get_wikipedia_summary(query):
     try:
         # Remove 'wikipedia' from the query if present
@@ -110,6 +142,7 @@ def get_wikipedia_summary(query):
         return "Sorry, I couldn't fetch that information."
 
 
+#the assistant greets the user
 speak(greeting)
 
 # Adjust these properties for better speech detection
@@ -119,6 +152,7 @@ listener.non_speaking_duration = 1.0  # Minimum length of silence to consider sp
 
 print("Starting voice recognition... (Press Ctrl+C to exit)")
 
+#listens to the user
 def listen_to_speech():
     while True:
         try:
@@ -152,7 +186,7 @@ def listen_to_speech():
             break
         return command
 
-
+#runs the assistant
 def run_assistant():
     while True:
         command = listen_to_speech()
@@ -193,6 +227,16 @@ def run_assistant():
                 speak(result)
             else:
                 speak("What would you like to know about?")
+
+        elif 'take note' in command or 'save note' in command:
+            speak("What would you like me to note down?")
+            note_content = listen_to_speech()
+            if note_content:
+                result = save_note(note_content)
+                speak(result)
+                print(result)
+            else:
+                speak("I couldn't hear the note content. Please try again.")
 
         elif 'news' in command:
             # Check for specific news categories or queries
