@@ -63,13 +63,13 @@ def save_note(note_content):
             os.makedirs(notes_dir)
         
         # Generate timestamp for unique filename
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"note_{timestamp}.txt"
         filepath = os.path.join(notes_dir, filename)
         
         # Save the note with timestamp
         with open(filepath, "w") as f:
-            f.write(f"Note created on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(f"Note created on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             f.write(note_content)
         
         return f"Note saved successfully as {filename}"
