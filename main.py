@@ -3,10 +3,16 @@ import speech_recognition as sr
 import pyttsx3
 import webbrowser
 import urllib.parse
-import datetime
+# import datetime
 import requests
 import json
 import os
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+import pickle
 
 #name of the assistant
 assistant_name = "sunday"
@@ -40,7 +46,8 @@ engine.setProperty('voice', voices[1].id)
 greeting = f'Hello, I am {assistant_name}, your virtual assistant. How can I help you today?'
 #news api key
 NEWS_API_KEY = "2a0be3767ca24e52b8a51b04bc3cf338"
-
+# If modifying these scopes, delete the file token.json.
+SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
 #function for the assistant to speak
 def speak(text):
@@ -142,6 +149,103 @@ def get_wikipedia_summary(query):
         return "Sorry, I couldn't fetch that information."
 
 
+def get_google_calendar_service():
+    """Get or refresh Google Calendar credentials."""
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first time.
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    return build('calendar', 'v3', credentials=creds)
+
+def create_calendar_reminder(text, reminder_time):
+    """Create a Google Calendar event for the reminder."""
+    try:
+        service = get_google_calendar_service()
+        
+        # Create the event
+        event = {
+            'summary': f'Reminder: {text}',
+            'description': f'Reminder set by Virtual Assistant: {text}',
+            'start': {
+                'dateTime': reminder_time.isoformat(),
+                'timeZone': 'UTC',
+            },
+            'end': {
+                'dateTime': (reminder_time + timedelta(minutes=30)).isoformat(),
+                'timeZone': 'UTC',
+            },
+            'reminders': {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'popup', 'minutes': 0},
+                    {'method': 'email', 'minutes': 5},
+                ],
+            },
+        }
+
+        event = service.events().insert(calendarId='primary', body=event).execute()
+        return True, f"Reminder set in Google Calendar for {reminder_time.strftime('%Y-%m-%d %H:%M')}"
+    except Exception as e:
+        return False, f"Error setting reminder in Google Calendar: {e}"
+
+def parse_time(time_input):
+    """Parse time input in various formats."""
+    try:
+        time_input = time_input.lower().strip()
+        current_time = datetime.now()
+        reminder_time = current_time
+
+        # Handle "tomorrow"
+        if 'tomorrow' in time_input:
+            reminder_time = current_time + timedelta(days=1)
+            time_input = time_input.replace('tomorrow', '').strip()
+
+        # Extract time if "at" is present
+        if 'at' in time_input:
+            time_part = time_input.split('at')[1].strip()
+            # Remove any dots from a.m./p.m.
+            time_part = time_part.replace('.', '')
+            # Remove any spaces between number and AM/PM
+            time_part = time_part.replace(' pm', 'pm').replace(' am', 'am')
+            
+            # Extract hour
+            hour_str = ''.join(filter(str.isdigit, time_part))
+            if not hour_str:
+                raise ValueError("Could not extract hour from time input")
+            
+            hour = int(hour_str)
+            
+            # Handle PM times
+            if 'pm' in time_part or 'p.m' in time_part:
+                if hour != 12:
+                    hour += 12
+            # Handle AM times
+            elif 'am' in time_part or 'a.m' in time_part:
+                if hour == 12:
+                    hour = 0
+            
+            reminder_time = reminder_time.replace(hour=hour, minute=0, second=0, microsecond=0)
+        
+        return reminder_time
+    except Exception as e:
+        raise ValueError(f"Could not understand time format: {time_input}")
+
+
+
 #the assistant greets the user
 speak(greeting)
 
@@ -210,7 +314,7 @@ def run_assistant():
                 print(f"Error playing media: {e}")
 
         elif 'time' in command:
-            current_time = datetime.datetime.now().strftime('%I:%M %p')
+            current_time = datetime.now().strftime('%I:%M %p')
             speak(f"The current time is {current_time}")
             print(current_time)
 
@@ -263,6 +367,26 @@ def run_assistant():
                 
             print(f"\n{news}\n")
             speak(news.replace('\n', ' ').replace('   ', ' '))
+
+
+        elif 'set reminder' in command or 'remind me' in command:
+            speak("What should I remind you about?")
+            reminder_text = listen_to_speech()
+            
+            speak("When should I remind you? Please specify the date and time (for example: tomorrow at 3 PM, or December 25th at 9 AM)")
+            time_input = listen_to_speech()
+            
+            try:
+                reminder_time = parse_time(time_input)
+                success, message = create_calendar_reminder(reminder_text, reminder_time)
+                speak(message)
+                print(message)
+            except ValueError as e:
+                speak(f"Sorry, I couldn't understand that time format. {str(e)}")
+                print(f"Error parsing time: {str(e)}")
+            except Exception as e:
+                speak("Sorry, I couldn't set that reminder. Please try again.")
+                print(f"Error setting reminder: {e}")
 
 
         elif 'goodbye' in command:
