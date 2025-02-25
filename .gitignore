@@ -163,4 +163,5 @@ cython_debug/
 
 *.json
 credentials.json
+token.jsoncredentials.json
 token.json
