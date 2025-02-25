@@ -13,6 +13,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 import pickle
+from transformers import pipeline
 
 
 
@@ -169,6 +170,68 @@ def create_calendar_reminder(text, reminder_time):
     except Exception as e:
         return False, f"Error setting reminder in Google Calendar: {e}"
 
+# # Initialize the Hugging Face model pipeline with a conversational model
+# llm_pipeline = pipeline("text-generation", model="microsoft/DialoGPT-medium")
+
+# def get_llm_response(user_input):
+#     try:
+#         # Create a more engaging prompt
+#         prompt = f"You are a friendly virtual assistant. The user asks: '{user_input}'. How do you respond?"
+#         response = llm_pipeline(prompt, max_length=100, num_return_sequences=1, truncation=True)
+        
+#         # Extract the generated text from the response
+#         generated_text = response[0]['generated_text']
+        
+#         # Return the response without the prompt
+#         return generated_text.strip()
+#     except Exception as e:
+#         print(f"Error communicating with LLM: {e}")
+#         return "I'm sorry, I couldn't process that request."
+
+
+# def parse_time(time_input):
+#     """Parse time input in various formats."""
+#     try:
+#         time_input = time_input.lower().strip()
+#         current_time = datetime.now()
+#         reminder_time = current_time
+
+#         # Handle "tomorrow"
+#         if 'tomorrow' in time_input:
+#             reminder_time = current_time + timedelta(days=1)
+#             time_input = time_input.replace('tomorrow', '').strip()
+
+#         # Extract time if "at" is present
+#         if 'at' in time_input:
+#             time_part = time_input.split('at')[1].strip()
+#             # Remove any dots from a.m./p.m.
+#             time_part = time_part.replace('.', '')
+#             # Remove any spaces between number and AM/PM
+#             time_part = time_part.replace(' pm', 'pm').replace(' am', 'am')
+            
+#             # Extract hour
+#             hour_str = ''.join(filter(str.isdigit, time_part))
+#             if not hour_str:
+#                 raise ValueError("Could not extract hour from time input")
+            
+#             hour = int(hour_str)
+            
+#             # Handle PM times
+#             if 'pm' in time_part or 'p.m' in time_part:
+#                 if hour != 12:
+#                     hour += 12
+#             # Handle AM times
+#             elif 'am' in time_part or 'a.m' in time_part:
+#                 if hour == 12:
+#                     hour = 0
+            
+#             reminder_time = reminder_time.replace(hour=hour, minute=0, second=0, microsecond=0)
+        
+#         return reminder_time
+#     except Exception as e:
+#         raise ValueError(f"Could not understand time format: {time_input}")
+
+
 def parse_time(time_input):
     """Parse time input in various formats."""
     try:
@@ -176,10 +239,44 @@ def parse_time(time_input):
         current_time = datetime.now()
         reminder_time = current_time
 
-        # Handle "tomorrow"
-        if 'tomorrow' in time_input:
-            reminder_time = current_time + timedelta(days=1)
-            time_input = time_input.replace('tomorrow', '').strip()
+        # Handle specific dates
+        if 'next week' in time_input:
+            reminder_time = current_time + timedelta(weeks=1)
+            time_input = time_input.replace('next week', '').strip()
+        elif 'next' in time_input:
+            # Handle specific day names like 'next Monday'
+            day_name = time_input.split('next')[-1].strip()
+            reminder_time += (7 - current_time.weekday() + {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6}.get(day_name, 0)) % 7
+            time_input = time_input.replace(f'next {day_name}', '').strip()
+        elif 'today' in time_input:
+            time_input = time_input.replace('today', '').strip()
+
+        # Handle specific date formats like 'December 18' or '12/18'
+        try:
+            if '/' in time_input:
+                month, day = map(int, time_input.split('/'))
+                reminder_time = reminder_time.replace(month=month, day=day, hour=0, minute=0)
+            else:
+                month_day = time_input.split()
+                if len(month_day) == 2:
+                    month = month_day[0].capitalize()
+                    day = int(month_day[1])
+                    month_number = datetime.datetime.strptime(month, '%B').month
+                    reminder_time = reminder_time.replace(month=month_number, day=day, hour=0, minute=0)
+                elif len(month_day) == 1:
+                    # Handle cases like 'December'
+                    month = month_day[0].capitalize()
+                    month_number = datetime.datetime.strptime(month, '%B').month
+                    reminder_time = reminder_time.replace(month=month_number, day=1, hour=0, minute=0)
+                elif len(month_day) == 2 and month_day[1][-2:] in ['th', 'st', 'nd', 'rd']:
+                    # Handle cases like 'December 18th'
+                    month = month_day[0].capitalize()
+                    day = int(month_day[1][:-2])  # Remove 'th', 'st', 'nd', 'rd'
+                    month_number = datetime.datetime.strptime(month, '%B').month
+                    reminder_time = reminder_time.replace(month=month_number, day=day, hour=0, minute=0)
+        except ValueError:
+            print(f"Error parsing day: {time_input}")  # Debug print
+            pass  # Ignore if parsing fails, keep the current reminder_time
 
         # Extract time if "at" is present
         if 'at' in time_input:
