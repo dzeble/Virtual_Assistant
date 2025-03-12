@@ -18,7 +18,7 @@ The assistant utilizes speech recognition to listen for user commands and respon
 ## How to Use It
 1. **Clone the Repository**: 
    ```bash
-   git clone https://github.com/SvenDow/Virtual_Assistant.git
+   git clone https://github.com/dzeble/Virtual_Assistant.git
    ```
    
 2. **Navigate to the Project Directory**:
