@@ -170,67 +170,6 @@ def create_calendar_reminder(text, reminder_time):
     except Exception as e:
         return False, f"Error setting reminder in Google Calendar: {e}"
 
-# # Initialize the Hugging Face model pipeline with a conversational model
-# llm_pipeline = pipeline("text-generation", model="microsoft/DialoGPT-medium")
-
-# def get_llm_response(user_input):
-#     try:
-#         # Create a more engaging prompt
-#         prompt = f"You are a friendly virtual assistant. The user asks: '{user_input}'. How do you respond?"
-#         response = llm_pipeline(prompt, max_length=100, num_return_sequences=1, truncation=True)
-        
-#         # Extract the generated text from the response
-#         generated_text = response[0]['generated_text']
-        
-#         # Return the response without the prompt
-#         return generated_text.strip()
-#     except Exception as e:
-#         print(f"Error communicating with LLM: {e}")
-#         return "I'm sorry, I couldn't process that request."
-
-
-# def parse_time(time_input):
-#     """Parse time input in various formats."""
-#     try:
-#         time_input = time_input.lower().strip()
-#         current_time = datetime.now()
-#         reminder_time = current_time
-
-#         # Handle "tomorrow"
-#         if 'tomorrow' in time_input:
-#             reminder_time = current_time + timedelta(days=1)
-#             time_input = time_input.replace('tomorrow', '').strip()
-
-#         # Extract time if "at" is present
-#         if 'at' in time_input:
-#             time_part = time_input.split('at')[1].strip()
-#             # Remove any dots from a.m./p.m.
-#             time_part = time_part.replace('.', '')
-#             # Remove any spaces between number and AM/PM
-#             time_part = time_part.replace(' pm', 'pm').replace(' am', 'am')
-            
-#             # Extract hour
-#             hour_str = ''.join(filter(str.isdigit, time_part))
-#             if not hour_str:
-#                 raise ValueError("Could not extract hour from time input")
-            
-#             hour = int(hour_str)
-            
-#             # Handle PM times
-#             if 'pm' in time_part or 'p.m' in time_part:
-#                 if hour != 12:
-#                     hour += 12
-#             # Handle AM times
-#             elif 'am' in time_part or 'a.m' in time_part:
-#                 if hour == 12:
-#                     hour = 0
-            
-#             reminder_time = reminder_time.replace(hour=hour, minute=0, second=0, microsecond=0)
-        
-#         return reminder_time
-#     except Exception as e:
-#         raise ValueError(f"Could not understand time format: {time_input}")
-
 
 def parse_time(time_input):
     """Parse time input in various formats."""

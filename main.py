@@ -12,7 +12,6 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 import pickle
-# from actions.assistant_actions import save_note, get_news, get_wikipedia_summary, get_google_calendar_service, create_calendar_reminder, parse_time, get_llm_response
 from actions.assistant_actions import save_note, get_news, get_wikipedia_summary, get_google_calendar_service, create_calendar_reminder, parse_time
 from transformers import pipeline
 
@@ -198,10 +197,6 @@ def run_assistant():
             speak('Goodbye, have a nice day!')
             break
 
-        # elif command:  # If the command doesn't match any known commands
-        #     llm_response = get_llm_response(command)
-        #     speak(llm_response)
-        #     print(f"LLM Response: {llm_response}")
         
 
 
